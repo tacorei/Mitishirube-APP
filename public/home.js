@@ -15,6 +15,26 @@ window.addEventListener('DOMContentLoaded', () => {
     })
     .catch(err => console.error('Failed to fetch events:', err));
 
+  // Dark Mode Logic
+  const toggleBtn = document.getElementById('dark-mode-toggle');
+  const body = document.body;
+
+  // 初期設定: ローカルストレージまたはOS設定
+  const savedMode = localStorage.getItem('theme');
+  if (savedMode === 'dark' || (!savedMode && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    body.classList.add('dark-mode');
+    if (toggleBtn) toggleBtn.textContent = '☀️';
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      body.classList.toggle('dark-mode');
+      const isDark = body.classList.contains('dark-mode');
+      toggleBtn.textContent = isDark ? '☀️' : '🌙';
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+  }
+
   // PWA Install Logic
   let deferredPrompt;
   const installBtn = document.getElementById('install-btn');
@@ -95,69 +115,83 @@ function renderDetailTimeline(event) {
 
   wrap.appendChild(timelineDiv);
 
+  wrap.appendChild(timelineDiv);
+
   const timelineContainer = document.getElementById('mini-timeline');
+  let refreshInterval;
 
-  // 特定のイベントの投稿を取得
-  fetch(`/api/posts?eventId=${event.id}`)
-    .then(res => res.json())
-    .then(data => {
-      timelineContainer.innerHTML = '';
-      const posts = data.items || [];
+  // データ取得ロジック
+  const fetchTimeline = () => {
+    fetch(`/api/posts?eventId=${event.id}`)
+      .then(res => res.json())
+      .then(data => {
+        timelineContainer.innerHTML = '';
+        const posts = data.items || [];
 
-      if (posts.length === 0) {
-        timelineContainer.innerHTML = `
-          <div class="empty-state">
-            <p>まだこのイベントにログはありません。</p>
-            <a href="/posts.html?eventId=${event.id}" class="jump-link">お知らせ一覧へ</a>
-          </div>
+        if (posts.length === 0) {
+          timelineContainer.innerHTML = `
+            <div class="empty-state">
+              <p>まだこのイベントにログはありません。</p>
+              <a href="/posts.html?eventId=${event.id}" class="jump-link">お知らせ一覧へ</a>
+            </div>
+          `;
+          return;
+        }
+
+        posts.forEach(post => {
+          const card = document.createElement('div');
+          card.className = 'mini-post-card';
+
+          const metaDiv = document.createElement('div');
+          metaDiv.className = 'post-meta';
+
+          const boothSpan = document.createElement('span');
+          boothSpan.className = 'post-booth';
+          boothSpan.textContent = post.booth_name;
+          metaDiv.appendChild(boothSpan);
+
+          const dateSpan = document.createElement('span');
+          dateSpan.className = 'post-date';
+          dateSpan.textContent = post.posted_at;
+          metaDiv.appendChild(dateSpan);
+
+          card.appendChild(metaDiv);
+
+          const h4 = document.createElement('h4');
+          h4.className = 'post-title';
+          h4.textContent = post.title;
+          card.appendChild(h4);
+
+          const pBody = document.createElement('p');
+          pBody.className = 'post-body';
+          pBody.textContent = post.body;
+          card.appendChild(pBody);
+
+          timelineContainer.appendChild(card);
+        });
+
+        // 最後に全体のお知らせページへのリンクを追加
+        const footerLink = document.createElement('div');
+        footerLink.className = 'timeline-footer';
+        footerLink.innerHTML = `
+          <a href="/posts.html?eventId=${event.id}" class="primary-button-outline">
+            すべてのお知らせを見る
+          </a>
         `;
-        return;
-      }
-
-      posts.forEach(post => {
-        const card = document.createElement('div');
-        card.className = 'mini-post-card';
-
-        const metaDiv = document.createElement('div');
-        metaDiv.className = 'post-meta';
-
-        const boothSpan = document.createElement('span');
-        boothSpan.className = 'post-booth';
-        boothSpan.textContent = post.booth_name;
-        metaDiv.appendChild(boothSpan);
-
-        const dateSpan = document.createElement('span');
-        dateSpan.className = 'post-date';
-        dateSpan.textContent = post.posted_at;
-        metaDiv.appendChild(dateSpan);
-
-        card.appendChild(metaDiv);
-
-        const h4 = document.createElement('h4');
-        h4.className = 'post-title';
-        h4.textContent = post.title;
-        card.appendChild(h4);
-
-        const pBody = document.createElement('p');
-        pBody.className = 'post-body';
-        pBody.textContent = post.body;
-        card.appendChild(pBody);
-
-        timelineContainer.appendChild(card);
+        timelineContainer.appendChild(footerLink);
+      })
+      .catch(err => {
+        console.error(err);
+        // エラー時は表示を変えない（古いデータを残す）かエラー表示
       });
+  };
 
-      // 最後に全体のお知らせページへのリンクを追加
-      const footerLink = document.createElement('div');
-      footerLink.className = 'timeline-footer';
-      footerLink.innerHTML = `
-        <a href="/posts.html?eventId=${event.id}" class="primary-button-outline">
-          すべてのお知らせを見る
-        </a>
-      `;
-      timelineContainer.appendChild(footerLink);
-    })
-    .catch(err => {
-      timelineContainer.innerHTML = '<p class="error">ログの取得に失敗しました。</p>';
-      console.error(err);
-    });
+  // 初回ロード
+  fetchTimeline();
+
+  // 自動更新 (30秒ごと)
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(fetchTimeline, 30000);
+
+  // 画面遷移でクリアされるが、SPA的な動きをするならclearIntervalが必要（今回は簡易実装）
 }
