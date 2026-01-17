@@ -1,0 +1,37 @@
+﻿<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>日程表</title>
+  <!-- 日程表ページ専用のスタイル -->
+  <link rel="stylesheet" href="/schedule.css" />
+  <link rel="manifest" href="/manifest.json" />
+</head>
+
+<body>
+  <!-- 日程表画面 -->
+  <header class="page-header">
+    <h1>日程表</h1>
+    <p>当日の流れを時間順に確認できます。</p>
+  </header>
+  <!-- 画面間リンク用ナビゲーション -->
+  <nav class="site-nav">
+    <a href="/index.html">ホーム</a>
+    <a href="/schedule.html">日程表</a>
+    <a href="/posts.html">最新情報</a>
+  </nav>
+
+  <main class="page-body">
+    <section class="schedule-section">
+      <h2>タイムテーブル</h2>
+      <!-- JSがここに日程を追加する -->
+      <div id="schedule-list" class="schedule-list">読み込み中...</div>
+    </section>
+  </main>
+
+  <script src="/schedule.js"></script>
+</body>
+
+</html>

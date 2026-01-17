@@ -1,0 +1,138 @@
+﻿/* posts.css */
+/* 最新情報ページ用: 新しい情報が見やすいカード表示 */
+
+:root {
+  --bg: #f4f7ff;
+  --ink: #1f1f1f;
+  --accent: #2b5bbf;
+  --card: #ffffff;
+  --muted: #5f6b7a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  background: linear-gradient(180deg, #f4f7ff 0%, #fff6f0 100%);
+  color: var(--ink);
+}
+
+.page-header {
+  padding: 24px 16px 8px;
+}
+
+.page-header h1 {
+  margin: 0 0 6px;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.site-nav {
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px 16px;
+}
+
+.site-nav a {
+  text-decoration: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.page-body {
+  padding: 0 16px 24px;
+}
+
+.post-form-section {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(15, 45, 107, 0.08);
+  border: 2px solid #e7ecf7;
+  margin-bottom: 16px;
+}
+
+.post-form-section h2 {
+  margin-top: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.post-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.form-row {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.form-row input,
+.form-row textarea {
+  font: inherit;
+  padding: 10px 12px;
+  border: 2px solid #dfe7fb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.primary-button {
+  align-self: start;
+  padding: 10px 14px;
+  border: 2px solid var(--accent);
+  background: #ffffff;
+  color: var(--accent);
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.posts-section {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(15, 45, 107, 0.08);
+  border: 2px solid #e7ecf7;
+}
+
+.posts-section h2 {
+  margin-top: 0;
+}
+
+.posts-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* JSが付ける post-item をカード風にする */
+.post-item {
+  background: #ffffff;
+  border: 2px solid #dfe7fb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
+/* 視覚的に「お知らせ」を目立たせる */
+.post-item::before {
+  content: "🔔 ";
+  color: var(--accent);
+  font-weight: 700;
+}

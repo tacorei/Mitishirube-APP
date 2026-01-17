@@ -1,0 +1,49 @@
+﻿<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>イベントホーム</title>
+  <link rel="stylesheet" href="/home.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          }, err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
+  </script>
+</head>
+
+<body>
+  <header class="site-header">
+    <h1>イベント一覧</h1>
+    <p>イベントを選ぶと詳細が表示されます。</p>
+  </header>
+
+  <main class="layout">
+    <section class="event-list">
+      <h2>開催予定イベント</h2>
+      <!-- イベント選択ボタンをJSで生成します -->
+      <div id="event-buttons" class="event-buttons"></div>
+    </section>
+
+    <section class="event-detail">
+      <h2>イベント詳細</h2>
+      <!-- 選択したイベントの詳細をJSで表示します -->
+      <div id="event-detail" class="detail-card">
+        <p>左のイベントを選んでください。</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/home.js"></script>
+</body>
+
+</html>

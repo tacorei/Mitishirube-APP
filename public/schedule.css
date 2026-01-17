@@ -1,0 +1,84 @@
+﻿/* schedule.css */
+/* 日程表ページ用: 見やすい時間順の表示を意識したスタイル */
+
+:root {
+  --bg: #f4f7ff;
+  --ink: #1f1f1f;
+  --accent: #2b5bbf;
+  --card: #ffffff;
+  --muted: #5f6b7a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  background: linear-gradient(180deg, #f4f7ff 0%, #fff6f0 100%);
+  color: var(--ink);
+}
+
+.page-header {
+  padding: 24px 16px 8px;
+}
+
+.page-header h1 {
+  margin: 0 0 6px;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.site-nav {
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px 16px;
+}
+
+.site-nav a {
+  text-decoration: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.page-body {
+  padding: 0 16px 24px;
+}
+
+.schedule-section {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(15, 45, 107, 0.08);
+  border: 2px solid #e7ecf7;
+}
+
+.schedule-section h2 {
+  margin-top: 0;
+}
+
+.schedule-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* JSが付ける schedule-item を見やすくする */
+.schedule-item {
+  background: #ffffff;
+  border: 2px solid #dfe7fb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
+/* 重要情報を目で追いやすくする */
+.schedule-item::before {
+  content: "⏰ ";
+  color: var(--accent);
+  font-weight: 700;
+}

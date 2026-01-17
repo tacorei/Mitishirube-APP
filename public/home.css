@@ -1,0 +1,211 @@
+﻿/* home.css */
+/* ホーム画面の簡易スタイル */
+
+:root {
+  /* Soft pastel base + clear accents for key actions */
+  --bg: #f4f7ff;
+  --ink: #1f1f1f;
+  --accent: #2b5bbf;
+  --accent-strong: #0f2d6b;
+  --card: #ffffff;
+  --muted: #5f6b7a;
+  --soft-yellow: #fff6c7;
+  --soft-pink: #ffe3ef;
+  --soft-green: #e8f6ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  background: linear-gradient(180deg, #f4f7ff 0%, #fff6f0 100%);
+  color: var(--ink);
+}
+
+.site-header {
+  padding: 28px 16px 12px;
+}
+
+.site-nav {
+  padding: 0 16px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 15px;
+}
+
+.site-nav a {
+  text-decoration: none;
+  color: var(--accent);
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid #eee;
+}
+
+.site-nav a:hover {
+  background: #f0f4ff;
+}
+
+.site-header h1 {
+  margin: 0 0 8px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+.event-list,
+.event-detail {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 6px 18px rgba(15, 45, 107, 0.08);
+  border: 2px solid #e7ecf7;
+}
+
+.event-list {
+  background: linear-gradient(180deg, var(--soft-yellow) 0%, #ffffff 85%);
+}
+
+.event-detail {
+  background: linear-gradient(180deg, var(--soft-green) 0%, #ffffff 85%);
+}
+
+.event-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.event-card {
+  padding: 18px;
+  border: 2px solid #cfd8ee;
+  background: #fff;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(43, 91, 191, 0.12);
+  border-color: var(--accent);
+}
+
+.event-card h3 {
+  margin: 0 0 8px;
+  color: var(--accent-strong);
+}
+
+.event-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.detail-header {
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-header h2 {
+  margin: 0 0 8px 0;
+  color: var(--accent-strong);
+}
+
+.mini-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mini-post-card {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+}
+
+.post-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
+}
+
+.post-booth {
+  font-weight: bold;
+  color: var(--accent);
+  background: var(--soft-green);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.post-date {
+  color: var(--muted);
+}
+
+.mini-post-card h4 {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.mini-post-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.timeline-footer {
+  text-align: center;
+  margin-top: 20px;
+  padding: 10px;
+}
+
+.primary-button-outline {
+  display: inline-block;
+  padding: 10px 24px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.primary-button-outline:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+.empty-state .jump-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+@media (min-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr 2fr;
+  }
+}

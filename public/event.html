@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>イベント詳細</title>
+    <link rel="stylesheet" href="/home.css" />
+    <link rel="manifest" href="/manifest.json" />
+    <style>
+        .event-nav {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            padding: 15px 25px;
+            background: #eee;
+            text-decoration: none;
+            color: #333;
+            border-radius: 8px;
+            font-weight: bold;
+            flex: 1;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .nav-btn:hover {
+            background: #ddd;
+        }
+
+        .nav-btn.primary {
+            background: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="site-header">
+        <h1 id="event-name">読み込み中...</h1>
+        <p id="event-subtitle"></p>
+    </header>
+
+    <nav class="site-nav">
+        <a href="/index.html">← イベント一覧に戻る</a>
+    </nav>
+
+    <main class="layout">
+        <section class="event-info-card">
+            <h2 id="info-title">イベント概要</h2>
+            <div id="event-basic-info"></div>
+        </section>
+
+        <section class="event-menu">
+            <h2>メニュー</h2>
+            <div class="event-nav">
+                <a id="link-schedule" href="#" class="nav-btn primary">📅 日程表</a>
+                <a id="link-posts" href="#" class="nav-btn primary">📢 最新情報</a>
+                <a id="link-map" href="#" class="nav-btn">🗺️ 会場マップ(準備中)</a>
+                <a id="link-contact" href="#" class="nav-btn">📞 お問い合わせ(準備中)</a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // 1) URLパラメータからイベントIDを取得
+        const params = new URLSearchParams(location.search);
+        const eventId = params.get('id');
+
+        if (!eventId) {
+            document.body.innerHTML = '<h1>イベントIDが指定されていません</h1><a href="/index.html">一覧へ戻る</a>';
+        } else {
+            // 2) APIからイベント一覧を取得して該当するものを探す
+            fetch('/api/events')
+                .then(res => res.json())
+                .then(data => {
+                    const event = (data.events || []).find(e => e.id === eventId);
+                    if (!event) {
+                        document.body.innerHTML = '<h1>イベントが見つかりませんでした</h1><a href="/index.html">一覧へ戻る</a>';
+                        return;
+                    }
+
+                    // 情報を反映
+                    document.title = event.name;
+                    document.getElementById('event-name').textContent = event.name;
+                    document.getElementById('event-subtitle').textContent = event.subtitle;
+
+                    const infoDiv = document.getElementById('event-basic-info');
+                    infoDiv.innerHTML = `
+                        <p><strong>日時:</strong> ${event.date}</p>
+                        <p><strong>会場:</strong> ${event.location}</p>
+                        <hr>
+                        <p>${event.subtitle || '詳細な説明はありません。'}</p>
+                    `;
+
+                    // リンクにイベントIDを付与
+                    document.getElementById('link-schedule').href = `/schedule.html?eventId=${eventId}`;
+                    document.getElementById('link-posts').href = `/posts.html?eventId=${eventId}`;
+                })
+                .catch(err => {
+                    console.error('Failed to fetch event:', err);
+                    document.body.innerHTML = '<h1>データの読み込みに失敗しました</h1>';
+                });
+        }
+    </script>
+</body>
+
+</html>

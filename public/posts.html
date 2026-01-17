@@ -1,0 +1,45 @@
+﻿<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>最新情報</title>
+  <!-- 投稿ページ専用のスタイル -->
+  <link rel="stylesheet" href="/posts.css" />
+  <link rel="manifest" href="/manifest.json" />
+</head>
+
+<body>
+  <!-- 最新情報（ブース投稿）画面 -->
+  <header class="page-header">
+    <h1>最新情報</h1>
+    <p>ブースからの新しいお知らせを確認できます。</p>
+  </header>
+
+  <!-- 画面間リンク用ナビゲーション -->
+  <nav class="site-nav">
+    <a href="/index.html">ホーム</a>
+    <a href="/schedule.html">日程表</a>
+    <a href="/posts.html">最新情報</a>
+  </nav>
+
+  <main class="page-body">
+    <section class="posts-section">
+      <h2>お知らせ一覧</h2>
+      <!-- JSがここに投稿カードを追加する -->
+      <div id="posts-list" class="posts-list">読み込み中...</div>
+    </section>
+  </main>
+
+  <footer style="text-align: center; margin-top: 60px; padding: 30px; border-top: 1px solid #eee;">
+    <a href="/admin.html"
+      style="color: #888; text-decoration: none; border: 1px solid #ccc; padding: 8px 16px; border-radius: 20px; font-size: 0.8rem; transition: all 0.2s;">
+      Staff Login
+    </a>
+  </footer>
+
+  <script src="/posts.js"></script>
+</body>
+
+</html>
