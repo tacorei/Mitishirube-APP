@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>お問い合わせ</title>
+    <link rel="stylesheet" href="/home.css" />
+    <link rel="manifest" href="/manifest.json" />
+</head>
+
+<body>
+    <header class="site-header">
+        <h1>お問い合わせ</h1>
+        <p>不明点やお困りの際はこちら</p>
+    </header>
+
+    <nav class="site-nav">
+        <a href="#" id="back-link">← イベント詳細に戻る</a>
+    </nav>
+
+    <main class="layout">
+        <section class="glass-card">
+            <h3>インフォメーション</h3>
+            <p>イベントに関するお問い合わせは、会場入り口のインフォメーションセンター、またはお近くのスタッフ（青い腕章）までお声がけください。</p>
+
+            <hr style="opacity: 0.2; margin: 20px 0;">
+
+            <h3>緊急連絡先</h3>
+            <p><strong>本部:</strong> 準備中</p>
+        </section>
+    </main>
+
+    <script>
+        // 戻るリンクの設定
+        const params = new URLSearchParams(location.search);
+        const eventId = params.get('eventId');
+        const link = document.getElementById('back-link');
+        if (eventId) {
+            link.href = `/event.html?id=${eventId}`;
+        } else {
+            link.href = '/index.html';
+        }
+    </script>
+</body>
+
+</html>

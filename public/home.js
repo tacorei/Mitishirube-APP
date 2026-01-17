@@ -14,6 +14,25 @@ window.addEventListener('DOMContentLoaded', () => {
       renderEventList(events, buttonsWrap);
     })
     .catch(err => console.error('Failed to fetch events:', err));
+
+  // PWA Install Logic
+  let deferredPrompt;
+  const installBtn = document.getElementById('install-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installBtn) {
+      installBtn.style.display = 'inline-block';
+      installBtn.addEventListener('click', () => {
+        installBtn.style.display = 'none';
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          deferredPrompt = null;
+        });
+      });
+    }
+  });
 });
 
 function renderEventList(events, container) {

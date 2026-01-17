@@ -28,8 +28,26 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('fetch', (event) => {
     // API requests should not be cached or should be network-first
+    // API requests: Network First, falling back to Cache
     if (event.request.url.includes('/api/')) {
-        event.respondWith(fetch(event.request));
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // 正常なレスポンスならキャッシュに保存
+                    if (!response || response.status !== 200 || response.type !== 'basic') {
+                        return response;
+                    }
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                    });
+                    return response;
+                })
+                .catch(() => {
+                    // オフライン時はキャッシュから返す
+                    return caches.match(event.request);
+                })
+        );
         return;
     }
 

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>会場マップ</title>
+    <link rel="stylesheet" href="/home.css" />
+    <link rel="manifest" href="/manifest.json" />
+</head>
+
+<body>
+    <header class="site-header">
+        <h1>会場マップ</h1>
+        <p>イベント会場の案内図です</p>
+    </header>
+
+    <nav class="site-nav">
+        <a href="#" id="back-link">← イベント詳細に戻る</a>
+    </nav>
+
+    <main class="layout">
+        <section class="glass-card">
+            <div style="text-align: center; padding: 40px; background: rgba(0,0,0,0.1); border-radius: 8px;">
+                <p>🗺️</p>
+                <p>マップ画像は現在準備中です。</p>
+                <p>当日は現地の案内板もご確認ください。</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // 戻るリンクの設定
+        const params = new URLSearchParams(location.search);
+        const eventId = params.get('eventId');
+        const link = document.getElementById('back-link');
+        if (eventId) {
+            link.href = `/event.html?id=${eventId}`;
+        } else {
+            link.href = '/index.html';
+        }
+    </script>
+</body>
+
+</html>

@@ -229,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('保存しました');
             resetEventForm();
             loadEvents();
+            loadEventOptions(); // ドロップダウンも更新
         } else {
             alert('保存に失敗しました');
         }
