@@ -22,10 +22,6 @@ window.addEventListener('DOMContentLoaded', () => {
       return res.json();
     })
     .then(data => {
-      if (data.error) {
-        alert('API Error: ' + data.error);
-        return;
-      }
       const events = data.events || [];
       if (events.length === 0) {
         console.warn('No events found.');
@@ -34,7 +30,6 @@ window.addEventListener('DOMContentLoaded', () => {
     })
     .catch(err => {
       console.error('Failed to fetch events:', err);
-      alert('イベント情報の取得に失敗しました。\n' + err.message);
     });
 
   // Dark Mode Logic
@@ -96,9 +91,8 @@ function renderEventList(events, container) {
       renderDetailTimeline(event);
     });
 
-    btn.addEventListener('dblclick', () => {
-      window.location.href = `/event.html?id=${event.id}`;
-    });
+    // ダブルクリックでの遷移は廃止し、詳細プレビュー内にボタンを配置する方針へ変更
+    // btn.addEventListener('dblclick', () => { ... });
 
     container.appendChild(btn);
   });
@@ -124,6 +118,15 @@ function renderDetailTimeline(event) {
   pMuted.textContent = event.subtitle || '';
   headerDiv.appendChild(pMuted);
 
+  // 詳細ページへの遷移ボタンを追加
+  const detailLink = document.createElement('a');
+  detailLink.href = `/event.html?id=${event.id}`;
+  detailLink.className = 'primary-button-outline';
+  detailLink.textContent = '詳細ページを開く ➔';
+  detailLink.style.display = 'inline-block';
+  detailLink.style.marginTop = '12px';
+  headerDiv.appendChild(detailLink);
+
   wrap.appendChild(headerDiv);
 
   const timelineDiv = document.createElement('div');
@@ -134,8 +137,6 @@ function renderDetailTimeline(event) {
   pLoading.className = 'loading';
   pLoading.textContent = '最新ログを読み込み中...';
   timelineDiv.appendChild(pLoading);
-
-  wrap.appendChild(timelineDiv);
 
   wrap.appendChild(timelineDiv);
 
