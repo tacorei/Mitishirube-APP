@@ -1,8 +1,15 @@
 // admin.js
 // 管理・スタッフ画面のロジック
-const getToken = () => localStorage.getItem('authToken');
-const getAuthHeaders = () => {
-    const token = getToken();
+// Supabaseのセッションからトークンを取得するヘルパー
+// (非同期になるため、呼び出し元で await する必要があるが、fetchのheaders組み立て時に同期的に欲しい場合がある。
+//  シンプルな解決策として、Supabase JSクライアントがlocalStorageに持っているトークンを使うか、
+//  getSession()の結果を使う。ここではgetSession()を推奨するが、既存コードの書き換え量を減らすため
+//  API呼び出し直前にトークンを取得する形に変更する)
+
+async function getAuthHeaders() {
+    if (!window.appSupabase) return {};
+    const { data: { session } } = await window.appSupabase.auth.getSession();
+    const token = session ? session.access_token : null;
     return token ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } : { 'Content-Type': 'application/json' };
 };
 
@@ -32,28 +39,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 1) 認証チェック
+    // 1) 認証チェック (Supabase Auth)
     async function checkAuth() {
-        try {
-            const token = getToken();
-            if (!token) {
-                showLogin();
-                return;
-            }
-            const res = await fetch('/api/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const user = await res.json();
+        if (!window.appSupabase) {
+            console.error('Supabase client not initialized');
+            showLogin();
+            return;
+        }
 
-            if (user.username) {
-                // ログイン済み
-                showPanel(user);
-            } else {
-                // 未ログイン
+        // セッション取得
+        const { data: { session } } = await window.appSupabase.auth.getSession();
+
+        if (session) {
+            // プロフィール（権限）取得
+            const { data: profile } = await window.appSupabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            // 権限判定: User(null) / Staff / Admin
+            const role = profile ? profile.role : 'user';
+
+            // ログイン済みユーザー情報構築
+            const user = {
+                username: profile ? profile.username : (session.user.user_metadata.full_name || 'Guest'),
+                boothName: role === 'admin' ? 'Administrator' : (role === 'staff' ? 'Staff' : 'Guest'),
+                isAdmin: role === 'admin',
+                isStaff: role === 'staff' || role === 'admin',
+                role: role
+            };
+
+            // 権限による画面制御
+            if (user.role === 'user') {
+                alert('このアカウントには管理権限がありません。');
+                await window.appSupabase.auth.signOut();
                 showLogin();
+            } else {
+                showPanel(user);
             }
-        } catch (err) {
-            console.error('Auth check failed:', err);
+        } else {
             showLogin();
         }
     }
@@ -68,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showPanel(user) {
         document.getElementById('login-section').classList.add('hidden');
         document.getElementById('post-section').classList.remove('hidden');
-        document.getElementById('display-booth-name').textContent = user.boothName;
+        document.getElementById('display-booth-name').textContent = user.boothName + ` (${user.username})`;
 
         // 管理者ならタブを表示し、イベント選択肢をロードする
         if (user.isAdmin) {
@@ -100,28 +125,32 @@ document.addEventListener('DOMContentLoaded', () => {
         select.innerHTML = events.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     }
 
-    // 2) ログイン処理
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
+    // 2) ログイン処理 (Google OAuth)
+    // 既存のフォームをボタンクリックイベントに置き換えるため、フォームHTMLも変更推奨だが、
+    // ここではsubmitイベントを乗っ取ってGoogleログインを発火させる
+    const loginForm = document.getElementById('login-form');
+    // ボタンのテキストを変更してユーザーに通知
+    const loginBtn = loginForm.querySelector('button');
+    if (loginBtn) loginBtn.textContent = 'Googleアカウントでログイン';
 
+    // 入力欄は不要になるので隠す
+    loginForm.querySelectorAll('.form-group').forEach(el => el.style.display = 'none');
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
         try {
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+            if (!window.appSupabase) return alert('Supabase設定が読み込まれていません');
+
+            const { error } = await window.appSupabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.href // ログイン後にこのページに戻る
+                }
             });
-            const data = await res.json();
-            if (data.ok) {
-                localStorage.setItem('authToken', data.token);
-                showPanel(data.user);
-            } else {
-                alert('Login failed: ' + (data.error || ''));
-            }
+            if (error) throw error;
         } catch (err) {
             console.error(err);
-            alert('通信エラー');
+            alert('ログインエラー: ' + err.message);
         }
     });
 
@@ -143,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch('/api/posts', {
                 method: 'POST',
-                headers: getAuthHeaders(),
+                headers: await getAuthHeaders(),
                 body: JSON.stringify({ title, body, posted_at, eventId })
             });
             const data = await res.json();
@@ -164,9 +193,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4) ログアウト処理
     async function handleLogout() {
         if (!confirm('ログアウトしますか？')) return;
-        // サーバーには投げても良いが、クライアント側削除が主
-        // await fetch('/api/logout', { method: 'POST' }); 
-        localStorage.removeItem('authToken');
+        if (window.appSupabase) {
+            await window.appSupabase.auth.signOut();
+        }
         location.reload();
     }
 
@@ -257,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const res = await fetch(url, {
             method,
-            headers: getAuthHeaders(),
+            headers: await getAuthHeaders(),
             body: JSON.stringify(payload)
         });
 
@@ -280,9 +309,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.deleteEvent = async (id) => {
         if (!confirm(`イベント [${id}] を削除しますか？\n※関連する投稿やブースデータは削除されませんが、表示されなくなります。`)) return;
+
+        const headers = await getAuthHeaders();
         const res = await fetch(`/api/events/${id}`, {
             method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${getToken()}` }
+            headers: headers
         });
         if (res.ok) {
             loadEvents();

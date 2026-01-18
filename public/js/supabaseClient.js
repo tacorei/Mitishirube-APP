@@ -1,23 +1,19 @@
-
 // src/supabaseClient.js
-// Supabaseクライアントの初期化
-// ※利用するには、SupabaseのダッシュボードからURLとAnon Keyを取得して書き換えてください。
 
-// CDNから読み込んでいるため、window.supabase が利用可能です (index.html等のscriptタグで読み込みが必要)
-// <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+// 1) Netlifyの環境変数から注入された値を読み取る (ビルド時注入が必要)
+// あるいは、パブリックな値としてハードコードする
+// ※SupabaseのURLとAnon Keyは公開しても安全な設計になっています (RLSで守るため)
 const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
 const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
 
 if (SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') {
-    console.warn('Supabase URL is not configured in supabaseClient.js');
+    console.warn('⚠️ Supabase URL/Key is not set in public/js/supabaseClient.js');
 }
 
-const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+// 2) クライアント作成
+const supabase = (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE')
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 
-// エクスポート (module形式でない場合は window に生やすなど必要ですが、今回は簡易的にグローバル変数として扱う想定、あるいはmoduleとして読み込む)
-if (typeof module !== 'undefined') {
-    module.exports = { supabase };
-} else {
-    window.appSupabase = supabase;
-}
+// 3) グローバルに公開
+window.appSupabase = supabase;

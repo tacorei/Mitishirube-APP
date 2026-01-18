@@ -35,119 +35,82 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL || '', SUPABASE_KEY || '');
 
-// --- 認証用エンドポイント ---
+// --- 認証用エンドポイント / ミドルウェア ---
 
-// ログインAPI
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
-  }
-
-  // Supabaseからユーザー取得
-  const { data: user, error } = await supabase
-    .from('booth_users')
-    .select('*, booths(name, event_id)')
-    .eq('username', username)
-    .single();
-
-  if (error || !user) {
-    return res.status(401).json({ error: 'Invalid username or password' });
-  }
-
-  // パスワード照合
-  const isValid = bcrypt.compareSync(password, user.password_hash);
-  if (!isValid) {
-    return res.status(401).json({ error: 'Invalid username or password' });
-  }
-
-  // JWT発行
-  const payload = {
-    userId: user.id,
-    username: user.username,
-    boothId: user.booth_id,
-    boothName: user.booths ? user.booths.name : 'Admin',
-    eventId: user.booths ? user.booths.event_id : null,
-    isAdmin: !!user.is_admin
-  };
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
-
-  res.json({
-    ok: true,
-    token,
-    user: {
-      username: user.username,
-      boothName: payload.boothName,
-      isAdmin: payload.isAdmin
-    }
-  });
-});
+// 旧来の自前ログイン (/api/login) は廃止し、フロントエンド側でSupabase Authを行う。
+// サーバー側は送られてきたJWTを検証し、Profileテーブルから権限を確認する。
 
 // トークン検証用ミドルウェア
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
 
   if (!token) {
-    // トークンがない場合はゲスト扱い（req.userを設定しない）
-    // ルートによっては弾く処理が必要
-    return next();
+    return next(); // ゲスト扱い
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  // 1) JWTの署名検証 (SupabaseのJWT Secretを使用)
+  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) return res.status(403).json({ error: 'Invalid Token' });
-    req.user = user;
-    next();
+
+    // 2) decoded.sub がユーザーUUID。これを使って権限をDBから引く
+    const userId = decoded.sub;
+
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      const role = profile ? profile.role : 'user';
+
+      // 3) req.user を構築
+      req.user = {
+        id: userId,
+        role: role,
+        isAdmin: role === 'admin',
+        isStaff: role === 'staff' || role === 'admin',
+        username: profile ? profile.username : 'User'
+      };
+      next();
+
+    } catch (e) {
+      console.error('Profile fetch error:', e);
+      return res.status(500).json({ error: 'Internal Auth Error' });
+    }
   });
 };
 
-app.get('/api/me', authenticateToken, (req, res) => {
-  if (!req.user) {
-    return res.json({});
-  }
-  res.json({
-    username: req.user.username,
-    boothName: req.user.boothName,
-    eventId: req.user.eventId,
-    isAdmin: req.user.isAdmin
-  });
-});
-
-// ログアウトAPI (クライアント側でトークンを捨てるだけなので、サーバー側は成功を返すのみ)
-app.post('/api/logout', (req, res) => {
-  res.json({ ok: true });
-});
-
-// --- イベント管理用API ---
-
-// 全イベント取得
-app.get('/api/events', async (req, res) => {
-  const { data, error } = await supabase.from('events').select('*');
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ events: data });
-});
-
-// 管理者チェックミドルウェア
-const adminOnly = (req, res, next) => {
-  // authenticateToken を先に通す前提、またはここで呼ぶ
-  // 今回は個別にauthenticateTokenを呼んでいないルートもあるので、
-  // ここでheadersを見てverifyするか、ルート定義時に authenticateToken, adminOnly と繋ぐのが綺麗
-  // 簡易的にここで検証も兼ねる実装にする
+// 権限チェックミドルウェア
+const requireStaff = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
 
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Forbidden' });
-    if (!user.isAdmin) return res.status(403).json({ error: 'admin only' });
-    req.user = user;
-    next();
-  });
+  // authenticateTokenが先に実行されている前提なら req.user があるはずだが、
+  // 安全のためここでも verify フローを通すか、route定義で authenticateToken -> requireStaff の順にする。
+  // ここでは route定義側で `authenticateToken` を必須とする。
+  if (!req.user || !req.user.isStaff) {
+    return res.status(403).json({ error: 'Forbidden: Staff access required' });
+  }
+  next();
 };
+
+const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ error: 'Forbidden: Admin access only' });
+  }
+  next();
+};
+
+// /api/me: 自分の情報を返す (デバッグ/確認用)
+app.get('/api/me', authenticateToken, (req, res) => {
+  if (!req.user) return res.json({});
+  res.json(req.user);
+});
 
 // イベント作成
-app.post('/api/events', adminOnly, async (req, res) => {
+app.post('/api/events', authenticateToken, requireStaff, async (req, res) => {
   const { id, name, subtitle, date, location } = req.body;
   if (!id || !name) return res.status(400).json({ error: 'Id and name are required' });
 
@@ -160,7 +123,7 @@ app.post('/api/events', adminOnly, async (req, res) => {
 });
 
 // イベント更新
-app.put('/api/events/:id', adminOnly, async (req, res) => {
+app.put('/api/events/:id', authenticateToken, requireStaff, async (req, res) => {
   const { name, subtitle, date, location } = req.body;
   const { error } = await supabase
     .from('events')
@@ -171,8 +134,8 @@ app.put('/api/events/:id', adminOnly, async (req, res) => {
   res.json({ ok: true });
 });
 
-// イベント削除 (SupabaseのFK制約設定によっては関連データも消えるかエラーになる)
-app.delete('/api/events/:id', adminOnly, async (req, res) => {
+// イベント削除 (Admin only)
+app.delete('/api/events/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { error } = await supabase
     .from('events')
     .delete()
@@ -238,15 +201,20 @@ app.get('/api/posts', async (req, res) => {
   res.json({ items });
 });
 
-// 最新情報（ブース投稿）を保存するAPI (要ログイン)
-app.post('/api/posts', authenticateToken, async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Unauthorized. Please login.' });
-  }
-
+// 最新情報（ブース投稿）を保存するAPI (要ログイン: Staff以上)
+app.post('/api/posts', authenticateToken, requireStaff, async (req, res) => {
   const { title, body, posted_at, eventId: bodyEventId } = req.body;
-  const eventId = req.user.isAdmin ? (bodyEventId || req.user.eventId) : req.user.eventId;
-  const boothId = req.user.boothId;
+
+  // スタッフはどのイベントにも投稿できる(簡易実装)
+  // あるいは profiles に担当イベントを持たせる設計もありだが、今回は自由
+  const eventId = bodyEventId;
+
+  // ブースIDの扱いは、profilesテーブルには無いので一旦NULLにするか、
+  // 必要な場合は profiles に booth_id カラムを追加する必要がある。
+  // 今回は「スタッフ投稿」として booth_id は NULL または汎用的な値でも許容する、
+  // もしくはSupabase側で booth_posts の booth_id を nullable にしておく推奨。
+  // ここでは暫定的に NULL を送る (booth_users テーブルは使わなくなったため)
+  const boothId = null;
 
   if (!eventId || !title || !body || !posted_at) {
     return res.status(400).json({ error: 'missing fields' });
