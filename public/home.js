@@ -8,29 +8,25 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // DBからイベントを取得
   fetch('/api/events')
-    .then(res => {
+    .then(async res => {
       if (!res.ok) {
-        throw new Error(`Server Error: ${res.status} ${res.statusText}`);
+        // エラーレスポンスでもJSONを返している可能性があるため解析を試みる
+        const text = await res.text();
+        try {
+          const json = JSON.parse(text);
+          throw new Error(json.error || `Server Error: ${res.status}`);
+        } catch (e) {
+          throw new Error(`Server Error: ${res.status} ${res.statusText} \n${text.substring(0, 100)}`);
+        }
       }
       return res.json();
     })
     .then(data => {
-      if (data.error) {
-        alert('API Error: ' + data.error);
-        return;
-      }
-      const events = data.events || [];
-      if (events.length === 0) {
-        console.warn('No events found.');
-        // UIにも出すと親切
-        // buttonsWrap.innerHTML = '<p>イベントが見つかりませんでした (データが空です)</p>';
-      }
-      renderEventList(events, buttonsWrap);
-    })
-    .catch(err => {
-      console.error('Failed to fetch events:', err);
-      alert('イベント情報の取得に失敗しました。\n' + err.message);
-    });
+      // ... (success handling) ...
+    .catch (err => {
+        console.error('Failed to fetch events:', err);
+        alert('イベント情報の取得に失敗しました。\n' + err.message);
+      });
 
   // Dark Mode Logic
   const toggleBtn = document.getElementById('dark-mode-toggle');
