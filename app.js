@@ -5,19 +5,15 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const session = require('express-session');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // 1) Expressアプリを作成
 const app = express();
 
 // 1-1) セッションの設定
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'mitishirube-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: false } // ローカル開発のためfalse (本番はtrue推奨)
-}));
+// 1-1) セッション設定は削除 (Netlify Functionsはステートレスなため)
+const JWT_SECRET = process.env.JWT_SECRET || 'mitishirube-jwt-secret';
 
 // 1-2) 静的ファイル（HTML/CSS/JS）を配信する
 app.use(express.static(path.join(__dirname, 'public')));
@@ -62,33 +58,60 @@ app.post('/api/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid username or password' });
   }
 
-  // セッションに保存
-  req.session.userId = user.id;
-  req.session.username = user.username;
-  req.session.boothId = user.booth_id;
-  // boothsテーブルとの結合結果は user.booths (オブジェクト) に入る
-  req.session.boothName = user.booths ? user.booths.name : 'Admin';
-  req.session.eventId = user.booths ? user.booths.event_id : null;
-  req.session.isAdmin = !!user.is_admin;
+  // JWT発行
+  const payload = {
+    userId: user.id,
+    username: user.username,
+    boothId: user.booth_id,
+    boothName: user.booths ? user.booths.name : 'Admin',
+    eventId: user.booths ? user.booths.event_id : null,
+    isAdmin: !!user.is_admin
+  };
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
 
-  res.json({ ok: true, user: { username: user.username, boothName: req.session.boothName, isAdmin: req.session.isAdmin } });
-});
-
-app.get('/api/me', (req, res) => {
-  if (!req.session.userId) {
-    return res.json({});
-  }
   res.json({
-    username: req.session.username,
-    boothName: req.session.boothName,
-    eventId: req.session.eventId,
-    isAdmin: req.session.isAdmin
+    ok: true,
+    token,
+    user: {
+      username: user.username,
+      boothName: payload.boothName,
+      isAdmin: payload.isAdmin
+    }
   });
 });
 
-// ログアウトAPI
+// トークン検証用ミドルウェア
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+
+  if (!token) {
+    // トークンがない場合はゲスト扱い（req.userを設定しない）
+    // ルートによっては弾く処理が必要
+    return next();
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid Token' });
+    req.user = user;
+    next();
+  });
+};
+
+app.get('/api/me', authenticateToken, (req, res) => {
+  if (!req.user) {
+    return res.json({});
+  }
+  res.json({
+    username: req.user.username,
+    boothName: req.user.boothName,
+    eventId: req.user.eventId,
+    isAdmin: req.user.isAdmin
+  });
+});
+
+// ログアウトAPI (クライアント側でトークンを捨てるだけなので、サーバー側は成功を返すのみ)
 app.post('/api/logout', (req, res) => {
-  req.session.destroy();
   res.json({ ok: true });
 });
 
@@ -103,10 +126,21 @@ app.get('/api/events', async (req, res) => {
 
 // 管理者チェックミドルウェア
 const adminOnly = (req, res, next) => {
-  if (req.session.userId && req.session.isAdmin) {
-    return next();
-  }
-  res.status(403).json({ error: 'admin only' });
+  // authenticateToken を先に通す前提、またはここで呼ぶ
+  // 今回は個別にauthenticateTokenを呼んでいないルートもあるので、
+  // ここでheadersを見てverifyするか、ルート定義時に authenticateToken, adminOnly と繋ぐのが綺麗
+  // 簡易的にここで検証も兼ねる実装にする
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Forbidden' });
+    if (!user.isAdmin) return res.status(403).json({ error: 'admin only' });
+    req.user = user;
+    next();
+  });
 };
 
 // イベント作成
@@ -202,14 +236,14 @@ app.get('/api/posts', async (req, res) => {
 });
 
 // 最新情報（ブース投稿）を保存するAPI (要ログイン)
-app.post('/api/posts', async (req, res) => {
-  if (!req.session.userId) {
+app.post('/api/posts', authenticateToken, async (req, res) => {
+  if (!req.user) {
     return res.status(401).json({ error: 'Unauthorized. Please login.' });
   }
 
   const { title, body, posted_at, eventId: bodyEventId } = req.body;
-  const eventId = req.session.isAdmin ? (bodyEventId || req.session.eventId) : req.session.eventId;
-  const boothId = req.session.boothId;
+  const eventId = req.user.isAdmin ? (bodyEventId || req.user.eventId) : req.user.eventId;
+  const boothId = req.user.boothId;
 
   if (!eventId || !title || !body || !posted_at) {
     return res.status(400).json({ error: 'missing fields' });
@@ -229,6 +263,12 @@ app.post('/api/posts', async (req, res) => {
 
 // 7) サーバーを起動
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+
+// Netlify Functions用エクスポート
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

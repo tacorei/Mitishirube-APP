@@ -1,5 +1,10 @@
 // admin.js
 // 管理・スタッフ画面のロジック
+const getToken = () => localStorage.getItem('authToken');
+const getAuthHeaders = () => {
+    const token = getToken();
+    return token ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } : { 'Content-Type': 'application/json' };
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -30,7 +35,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1) 認証チェック
     async function checkAuth() {
         try {
-            const res = await fetch('/api/me');
+            const token = getToken();
+            if (!token) {
+                showLogin();
+                return;
+            }
+            const res = await fetch('/api/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const user = await res.json();
 
             if (user.username) {
@@ -89,7 +101,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 2) ログイン処理
-    // ... (既存のログイン処理) ...
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                localStorage.setItem('authToken', data.token);
+                showPanel(data.user);
+            } else {
+                alert('Login failed: ' + (data.error || ''));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('通信エラー');
+        }
+    });
 
     // 3) 投稿処理 (既にあるもの)
     const postForm = document.getElementById('post-form');
@@ -109,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch('/api/posts', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ title, body, posted_at, eventId })
             });
             const data = await res.json();
@@ -130,7 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4) ログアウト処理
     async function handleLogout() {
         if (!confirm('ログアウトしますか？')) return;
-        await fetch('/api/logout', { method: 'POST' });
+        // サーバーには投げても良いが、クライアント側削除が主
+        // await fetch('/api/logout', { method: 'POST' }); 
+        localStorage.removeItem('authToken');
         location.reload();
     }
 
@@ -221,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const res = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify(payload)
         });
 
@@ -244,7 +280,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.deleteEvent = async (id) => {
         if (!confirm(`イベント [${id}] を削除しますか？\n※関連する投稿やブースデータは削除されませんが、表示されなくなります。`)) return;
-        const res = await fetch(`/api/events/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/events/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
         if (res.ok) {
             loadEvents();
         } else {
