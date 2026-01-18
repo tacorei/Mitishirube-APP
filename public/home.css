@@ -14,19 +14,26 @@
   --soft-green: #e8f6ef;
 }
 
-/* Dark Mode Variables */
+/* Dark Mode Variables (Discord-inspired) */
 body.dark-mode {
-  --bg: #12141a;
-  --ink: #e2e8f0;
-  --card: #1e2533;
-  --muted: #94a3b8;
-  --accent: #60a5fa;
-  --accent-strong: #93c5fd;
+  --bg: #313338;
+  /* Deep Gray Background */
+  --ink: #dbdee1;
+  /* Off-white text */
+  --card: #2b2d31;
+  /* Darker Gray Cards */
+  --muted: #949ba4;
+  /* Muted Text */
+  --accent: #5865f2;
+  /* Discord Blurple */
+  --accent-strong: #4752c4;
+  /* Darker Blurple */
 
-  --soft-yellow: #332f1e;
-  /* Darker yellow tinge */
-  --soft-pink: #332029;
-  --soft-green: #1a3329;
+  --soft-yellow: #2b2d31;
+  /* Fallback to card color */
+  --soft-pink: #2b2d31;
+  --soft-green: #23a559;
+  /* Discord Green for accents */
 }
 
 body.dark-mode .event-list,
