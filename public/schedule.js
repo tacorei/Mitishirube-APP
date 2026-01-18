@@ -17,9 +17,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 1-1) ナビゲーションリンクの更新
   if (eventId) {
-    if (backLink) {
-      backLink.href = `/event.html?id=${eventId}`;
-      backLink.textContent = '← イベント詳細に戻る';
+    // ヘッダーに「← イベント詳細に戻る」ボタンを追加
+    const header = document.querySelector('.page-header');
+    if (header) {
+      const backBtn = document.createElement('a');
+      backBtn.href = `/event.html?id=${eventId}`;
+      backBtn.className = 'primary-button-outline';
+      backBtn.textContent = '← イベント詳細に戻る';
+      backBtn.style.marginTop = '10px';
+      backBtn.style.display = 'inline-block';
+      header.appendChild(backBtn);
     }
     // 他のナビゲーションリンクにも eventId を付与
     document.querySelectorAll('.site-nav a').forEach(link => {

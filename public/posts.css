@@ -136,3 +136,21 @@ body {
   color: var(--accent);
   font-weight: 700;
 }
+
+.primary-button-outline {
+  display: inline-block;
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.primary-button-outline:hover {
+  background: var(--accent);
+  color: white;
+}
