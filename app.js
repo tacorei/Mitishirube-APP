@@ -15,8 +15,11 @@ const app = express();
 // 1-1) セッション設定は削除 (Netlify Functionsはステートレスなため)
 const JWT_SECRET = process.env.JWT_SECRET || 'mitishirube-jwt-secret';
 
-// 1-2) 静的ファイル（HTML/CSS/JS）を配信する
-app.use(express.static(path.join(__dirname, 'public')));
+// 1-2) 静的ファイル（HTML/CSS/JS）はNetlifyのCDNが配信するため、
+// ここでの express.static は削除（または開発環境のみにする）
+if (process.env.NODE_ENV !== 'production') {
+  app.use(express.static(path.join(__dirname, 'public')));
+}
 
 // 1-3) 送信フォームのデータを受け取れるようにする
 app.use(express.json());
