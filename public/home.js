@@ -66,7 +66,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // セッション確認
     window.appSupabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        const username = session.user.user_metadata.full_name || 'Guest';
+        const username = session.user.user_metadata.full_name || session.user.email || 'Guest';
         loginStatusDiv.innerHTML = `
           <span>ようこそ, ${username}さん</span>
           <button id="main-logout-btn" style="margin-left:8px; padding:4px 8px; border:1px solid #ccc; background:transparent; border-radius:4px; cursor:pointer;">ログアウト</button>
@@ -77,16 +77,27 @@ window.addEventListener('DOMContentLoaded', () => {
         });
       } else {
         loginStatusDiv.innerHTML = `
-          <button id="main-login-btn" class="primary-button" style="padding:6px 12px; font-size:0.9rem;">
-             Googleでログイン (参加・閲覧)
-          </button>
+          <div id="home-login-ui" style="display: flex; gap: 8px; align-items: center;">
+            <input type="email" id="home-email" placeholder="メールアドレス" style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 0.9rem;">
+            <button id="main-login-btn" class="primary-button" style="padding:6px 12px; font-size:0.9rem;">
+               ログインメール送信
+            </button>
+          </div>
         `;
         document.getElementById('main-login-btn').addEventListener('click', async () => {
-          const { error } = await window.appSupabase.auth.signInWithOAuth({
-            provider: 'google',
+          const email = document.getElementById('home-email').value;
+          if (!email) return alert('メールアドレスを入力してください');
+
+          const { error } = await window.appSupabase.auth.signInWithOtp({
+            email,
             options: { redirectTo: window.location.href }
           });
-          if (error) console.error(error);
+          if (error) {
+            console.error(error);
+            alert('ログインエラー: ' + error.message);
+          } else {
+            alert('ログイン用リンクをメールで送信しました！');
+          }
         });
       }
     });

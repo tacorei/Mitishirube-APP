@@ -125,29 +125,43 @@ document.addEventListener('DOMContentLoaded', () => {
         select.innerHTML = events.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     }
 
-    // 2) ログイン処理 (Google OAuth)
-    // 既存のフォームをボタンクリックイベントに置き換えるため、フォームHTMLも変更推奨だが、
-    // ここではsubmitイベントを乗っ取ってGoogleログインを発火させる
+    // 2) ログイン処理 (マジックリンク / メール認証)
     const loginForm = document.getElementById('login-form');
     // ボタンのテキストを変更してユーザーに通知
     const loginBtn = loginForm.querySelector('button');
-    if (loginBtn) loginBtn.textContent = 'Googleアカウントでログイン';
+    if (loginBtn) loginBtn.textContent = 'ログイン用メールを送信';
 
-    // 入力欄は不要になるので隠す
-    loginForm.querySelectorAll('.form-group').forEach(el => el.style.display = 'none');
+    // メールアドレス入力欄を表示し、パスワード欄を隠す
+    const emailGroup = loginForm.querySelectorAll('.form-group')[0];
+    const passwordGroup = loginForm.querySelectorAll('.form-group')[1];
+
+    if (emailGroup) {
+        emailGroup.style.display = 'block';
+        const emailLabel = emailGroup.querySelector('label');
+        if (emailLabel) emailLabel.textContent = 'メールアドレス';
+        const emailInput = emailGroup.querySelector('input');
+        if (emailInput) {
+            emailInput.id = 'login-email'; // IDを合わせる
+            emailInput.type = 'email';
+            emailInput.placeholder = 'your@email.com';
+        }
+    }
+    if (passwordGroup) passwordGroup.style.display = 'none';
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
             if (!window.appSupabase) return alert('Supabase設定が読み込まれていません');
 
-            const { error } = await window.appSupabase.auth.signInWithOAuth({
-                provider: 'google',
+            const email = document.getElementById('login-email').value;
+            const { error } = await window.appSupabase.auth.signInWithOtp({
+                email,
                 options: {
-                    redirectTo: window.location.href // ログイン後にこのページに戻る
+                    emailRedirectTo: window.location.href // ログイン後にこのページに戻る
                 }
             });
             if (error) throw error;
+            alert('ログイン用リンクをメールで送信しました。メールを確認してください。');
         } catch (err) {
             console.error(err);
             alert('ログインエラー: ' + err.message);
