@@ -45,9 +45,22 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 3) APIから投稿データを取得して表示する関数
-  function loadPosts() {
-    fetch(`/api/posts?eventId=${eventId}`)
+  async function loadPosts() {
+    let token = null;
+    if (window.appSupabase) {
+      const { data: { session } } = await window.appSupabase.auth.getSession();
+      if (session) token = session.access_token;
+    }
+
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    fetch(`/api/posts?eventId=${eventId}`, { headers })
       .then((response) => {
+        if (response.status === 401) {
+          listEl.innerHTML = '<p class="error">この情報を表示するにはログインが必要です。</p>';
+          throw new Error('Unauthorized');
+        }
         if (!response.ok) {
           throw new Error('Failed to fetch posts');
         }

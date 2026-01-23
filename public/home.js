@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const toggleBtn = document.getElementById('dark-mode-toggle');
   const body = document.body;
 
-  // 初期設定: ローカルストレージのみ確認（OS設定での自動ダークモードは無効化し、デフォルトを「優しい色合い」にする）
+  // 初期設定: ローカルストレージのみ確認
   const savedMode = localStorage.getItem('theme');
   if (savedMode === 'dark') {
     body.classList.add('dark-mode');
@@ -49,6 +49,46 @@ window.addEventListener('DOMContentLoaded', () => {
       const isDark = body.classList.contains('dark-mode');
       toggleBtn.textContent = isDark ? '☀️' : '🌙';
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+  }
+
+  // --- 参加者ログイン (Google Auth) Logic ---
+  // ヘッダーにログインボタンを追加
+  const header = document.querySelector('.page-header');
+  if (header && window.appSupabase) {
+    // 既存のナビゲーション末尾などにボタンを追加
+    const loginStatusDiv = document.createElement('div');
+    loginStatusDiv.style.marginTop = '10px';
+    loginStatusDiv.style.fontSize = '0.9rem';
+
+    header.appendChild(loginStatusDiv);
+
+    // セッション確認
+    window.appSupabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        const username = session.user.user_metadata.full_name || 'Guest';
+        loginStatusDiv.innerHTML = `
+          <span>ようこそ, ${username}さん</span>
+          <button id="main-logout-btn" style="margin-left:8px; padding:4px 8px; border:1px solid #ccc; background:transparent; border-radius:4px; cursor:pointer;">ログアウト</button>
+        `;
+        document.getElementById('main-logout-btn').addEventListener('click', async () => {
+          await window.appSupabase.auth.signOut();
+          location.reload();
+        });
+      } else {
+        loginStatusDiv.innerHTML = `
+          <button id="main-login-btn" class="primary-button" style="padding:6px 12px; font-size:0.9rem;">
+             Googleでログイン (参加・閲覧)
+          </button>
+        `;
+        document.getElementById('main-login-btn').addEventListener('click', async () => {
+          const { error } = await window.appSupabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.href }
+          });
+          if (error) console.error(error);
+        });
+      }
     });
   }
 

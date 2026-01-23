@@ -45,41 +45,56 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // 3) APIから日程表データを取得する (eventIdを付与)
-  fetch(`/api/schedule?eventId=${eventId}`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error('Failed to fetch schedule');
-      }
-      return response.json();
-    })
-    .then((data) => {
-      const items = Array.isArray(data.items) ? data.items : [];
+  // セッションがあればトークンを付与
+  const fetchSchedule = async () => {
+    let token = null;
+    if (window.appSupabase) {
+      const { data: { session } } = await window.appSupabase.auth.getSession();
+      if (session) token = session.access_token;
+    }
 
-      items.sort((a, b) => {
-        const timeA = Date.parse((a.start_time || '').replace(' ', 'T'));
-        const timeB = Date.parse((b.start_time || '').replace(' ', 'T'));
-        return timeA - timeB;
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    fetch(`/api/schedule?eventId=${eventId}`, { headers })
+      .then((response) => {
+        if (response.status === 401) {
+          listEl.innerHTML = '<p class="error">この情報を表示するにはログインが必要です。</p>';
+          throw new Error('Unauthorized');
+        }
+        if (!response.ok) {
+          throw new Error('Failed to fetch schedule');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        const items = Array.isArray(data.items) ? data.items : [];
+
+        items.sort((a, b) => {
+          const timeA = Date.parse((a.start_time || '').replace(' ', 'T'));
+          const timeB = Date.parse((b.start_time || '').replace(' ', 'T'));
+          return timeA - timeB;
+        });
+
+        listEl.innerHTML = '';
+        if (items.length === 0) {
+          listEl.textContent = '予定されているスケジュールはありません。';
+          return;
+        }
+
+        items.forEach((item) => {
+          const row = document.createElement('div');
+          row.className = 'schedule-item';
+          const title = item.title || '(無題)';
+          const start = item.start_time || '';
+          const end = item.end_time || '';
+          row.textContent = `${start} - ${end} : ${title}`;
+          listEl.appendChild(row);
+        });
+      })
+      .catch((err) => {
+        listEl.textContent = '日程データの取得に失敗しました';
+        console.error(err);
       });
-
-      listEl.innerHTML = '';
-      if (items.length === 0) {
-        listEl.textContent = '予定されているスケジュールはありません。';
-        return;
-      }
-
-      items.forEach((item) => {
-        const row = document.createElement('div');
-        row.className = 'schedule-item';
-        const title = item.title || '(無題)';
-        const start = item.start_time || '';
-        const end = item.end_time || '';
-        row.textContent = `${start} - ${end} : ${title}`;
-        listEl.appendChild(row);
-      });
-    })
-    .catch((err) => {
-      listEl.textContent = '日程データの取得に失敗しました';
-      console.error(err);
-    });
-});
+  });
 

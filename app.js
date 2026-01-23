@@ -147,7 +147,12 @@ app.delete('/api/events/:id', authenticateToken, requireAdmin, async (req, res) 
 
 // --- コンテンツ用API ---
 
-app.get('/api/schedule', async (req, res) => {
+// --- コンテンツ用API ---
+
+// スケジュール取得 (全員ログイン必須: User以上)
+app.get('/api/schedule', authenticateToken, async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
   const eventId = req.query.eventId;
   if (!eventId) {
     return res.status(400).json({ error: 'eventId is required' });
@@ -163,7 +168,9 @@ app.get('/api/schedule', async (req, res) => {
   res.json({ items: data });
 });
 
-app.get('/api/timeline', async (req, res) => {
+app.get('/api/timeline', authenticateToken, async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
   // 従来の timeline API (全イベントの最新etc) は今回使わないが、
   // 必要なら同様に実装。ここでは簡易的に直近15件を取得
   const { data, error } = await supabase
@@ -182,7 +189,9 @@ app.get('/api/timeline', async (req, res) => {
   res.json({ items });
 });
 
-app.get('/api/posts', async (req, res) => {
+app.get('/api/posts', authenticateToken, async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+
   const eventId = req.query.eventId;
   if (!eventId) return res.status(400).json({ error: 'eventId required' });
 
