@@ -49,15 +49,20 @@ const authenticateToken = async (req, res, next) => {
     return next(); // ゲスト扱い
   }
 
-  // 1) JWTの署名検証 (SupabaseのJWT Secretを使用)
+  // 1) JWTの署名検証
   jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) return res.status(403).json({ error: 'Invalid Token' });
 
-    // 2) decoded.sub がユーザーUUID。これを使って権限をDBから引く
     const userId = decoded.sub;
 
     try {
-      const { data: profile, error } = await supabase
+      // 2) ユーザーのトークンを使って、そのユーザー権限でDBにアクセスするクライアントを作成
+      // これにより RLS (Users can view own profile) を通過して自分のroleを取得できる
+      const userSupabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      const { data: profile, error } = await userSupabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -107,6 +112,13 @@ const requireAdmin = (req, res, next) => {
 app.get('/api/me', authenticateToken, (req, res) => {
   if (!req.user) return res.json({});
   res.json(req.user);
+});
+
+// 全イベント取得 (公開API: 誰でも閲覧可能)
+app.get('/api/events', async (req, res) => {
+  const { data, error } = await supabase.from('events').select('*');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ events: data });
 });
 
 // イベント作成
