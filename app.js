@@ -5,13 +5,12 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken'); // 互換性のため残すが、基本Supabase Authを使う
 const bcrypt = require('bcryptjs');
 
 // 1) Expressアプリを作成
 const app = express();
 
-// 1-1) セッションの設定
 // 1-1) セッション設定は削除 (Netlify Functionsはステートレスなため)
 const JWT_SECRET = process.env.JWT_SECRET || 'mitishirube-jwt-secret';
 
@@ -49,42 +48,44 @@ const authenticateToken = async (req, res, next) => {
     return next(); // ゲスト扱い
   }
 
-  // 1) JWTの署名検証
-  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-    if (err) return res.status(403).json({ error: 'Invalid Token' });
+  try {
+    // 1) ユーザーのトークンを使って、そのユーザー権限でDBにアクセスするクライアントを作成
+    // これにより、署名の検証、有効期限の確認、RLS用コンテキストの確立が全て行われる
+    const userSupabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
 
-    const userId = decoded.sub;
+    // 2) Supabase公式の方法でユーザーを取得・検証
+    const { data: { user }, error } = await userSupabase.auth.getUser();
 
-    try {
-      // 2) ユーザーのトークンを使って、そのユーザー権限でDBにアクセスするクライアントを作成
-      // これにより RLS (Users can view own profile) を通過して自分のroleを取得できる
-      const userSupabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-        global: { headers: { Authorization: `Bearer ${token}` } }
-      });
-
-      const { data: profile, error } = await userSupabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      const role = profile ? profile.role : 'user';
-
-      // 3) req.user を構築
-      req.user = {
-        id: userId,
-        role: role,
-        isAdmin: role === 'admin',
-        isStaff: role === 'staff' || role === 'admin',
-        username: profile ? profile.username : 'User'
-      };
-      next();
-
-    } catch (e) {
-      console.error('Profile fetch error:', e);
-      return res.status(500).json({ error: 'Internal Auth Error' });
+    if (error || !user) {
+      // トークンが無効または期限切れ
+      return res.status(403).json({ error: 'Invalid Token' });
     }
-  });
+
+    // 3) Profilesテーブルから権限を取得
+    const { data: profile, error: profileError } = await userSupabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    const role = profile ? profile.role : 'user';
+
+    // 4) req.user を構築
+    req.user = {
+      id: user.id,
+      role: role,
+      isAdmin: role === 'admin',
+      isStaff: role === 'staff' || role === 'admin',
+      username: profile ? profile.username : (user.user_metadata.full_name || 'User')
+    };
+    next();
+
+  } catch (e) {
+    console.error('Internal Auth Error:', e);
+    return res.status(500).json({ error: 'Internal Auth Error' });
+  }
 };
 
 // 権限チェックミドルウェア
@@ -156,8 +157,6 @@ app.delete('/api/events/:id', authenticateToken, requireAdmin, async (req, res) 
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
 });
-
-// --- コンテンツ用API ---
 
 // --- コンテンツ用API ---
 
